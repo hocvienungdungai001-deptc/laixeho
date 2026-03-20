@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin V1.80 - Hệ Thống Lái Xe Hộ</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; }
+        .bg-success { background: #d4edda; color: #155724; }
+        .bg-warning { background: #fff3cd; color: #856404; }
+        .bg-danger { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Bảng Quản Trị Hệ Thống Tự Động</h1>
+        <div style="display: flex; gap: 20px;">
+            <div>Tổng nợ cần thu: <strong id="total-debt" style="color:red;">0đ</strong></div>
+            <div>Tài xế đang online: <strong id="online-count" style="color:green;">0</strong></div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>Danh sách Tài xế</h3>
+            <table>
+                <thead>
+                    <tr><th>SĐT</th><th>Phái</th><th>Nợ</th><th>Status</th></tr>
+                </thead>
+                <tbody id="driver-list"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h3>Đơn hàng (Đặt ngay & Hẹn giờ)</h3>
+            <table>
+                <thead>
+                    <tr><th>Khách hàng</th><th>Điểm đến</th><th>Y/C Giới tính</th><th>Thời gian</th><th>Trạng thái</th></tr>
+                </thead>
+                <tbody id="booking-list"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // 1. Lấy dữ liệu tài xế
+        db.collection("drivers").onSnapshot(snap => {
+            let html = "";
+            let total = 0;
+            let online = 0;
+            snap.forEach(doc => {
+                const d = doc.data();
+                total += d.balance_owed;
+                if(d.status === 'available') online++;
+                
+                const statusBadge = d.balance_owed >= d.limit ? '<span class="badge bg-danger">Bị khóa nợ</span>' : 
+                                    (d.status === 'available' ? '<span class="badge bg-success">Online</span>' : '<span class="badge bg-warning">Offline</span>');
+
+                html += `<tr>
+                    <td>${doc.id}</td>
+                    <td>${d.gender === 'male' ? 'Nam' : 'Nữ'}</td>
+                    <td>${d.balance_owed.toLocaleString()}đ</td>
+                    <td>${statusBadge}</td>
+                </tr>`;
+            });
+            document.getElementById('driver-list').innerHTML = html;
+            document.getElementById('total-debt').innerText = total.toLocaleString() + "đ";
+            document.getElementById('online-count').innerText = online;
+        });
+
+        // 2. Lấy danh sách đơn hàng
+        db.collection("bookings").orderBy("createdAt", "desc").limit(10).onSnapshot(snap => {
+            let html = "";
+            snap.forEach(doc => {
+                const b = doc.data();
+                const timeStr = b.scheduled_at ? b.scheduled_at : "Đón ngay";
+                const genderIcon = b.driver_gender_pref === 'male' ? '👨' : (b.driver_gender_pref === 'female' ? '👩' : '🚻');
+                
+                html += `<tr>
+                    <td>${b.customer_phone}</td>
+                    <td>${b.destination}</td>
+                    <td>${genderIcon}</td>
+                    <td>${timeStr}</td>
+                    <td><span class="badge bg-warning">${b.status}</span></td>
+                </tr>`;
+            });
+            document.getElementById('booking-list').innerHTML = html;
+        });
+    </script>
+</body>
+</html>
