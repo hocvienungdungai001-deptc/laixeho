@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lái Xe Hộ V1.70 - Lựa chọn giới tính</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root { --primary: #e67e22; --dark: #2c3e50; }
+        body { font-family: -apple-system, sans-serif; margin: 0; background: #f8f9fa; padding: 10px; }
+        .booking-card { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .input-group { background: #f1f2f6; border-radius: 10px; padding: 12px; margin-bottom: 12px; display: flex; align-items: center; }
+        .input-group input, .input-group select { border: none; background: transparent; width: 100%; outline: none; font-size: 16px; }
+        
+        .option-group { margin-bottom: 15px; }
+        .label { font-size: 14px; color: #666; margin-bottom: 8px; display: block; }
+        .gender-selector { display: flex; gap: 10px; }
+        .gender-btn { 
+            flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 10px; 
+            background: white; cursor: pointer; text-align: center; font-size: 14px;
+        }
+        .gender-btn.active { 
+            background: var(--primary); color: white; border-color: var(--primary); font-weight: bold;
+        }
+        
+        .btn-order { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="booking-card">
+    <h3 style="text-align:center; color: var(--dark); margin-top:0;">ĐẶT TÀI XẾ</h3>
+    
+    <div class="input-group">
+        📍 <input type="text" id="pickup" placeholder="Điểm đón (Tên quán/Địa chỉ)">
+    </div>
+    <div class="input-group">
+        🏁 <input type="text" id="destination" placeholder="Bạn muốn về đâu?">
+    </div>
+
+    <div class="option-group">
+        <span class="label">Ưu tiên tài xế:</span>
+        <div class="gender-selector">
+            <div class="gender-btn active" onclick="setGender('any', this)">Bất kỳ</div>
+            <div class="gender-btn" onclick="setGender('male', this)">Nam</div>
+            <div class="gender-btn" onclick="setGender('female', this)">Nữ</div>
+        </div>
+    </div>
+
+    <div class="option-group">
+        <span class="label">Thời gian đón:</span>
+        <select id="time-type" onchange="document.getElementById('st-wrapper').style.display = (this.value === 'scheduled') ? 'flex' : 'none'" style="width:100%; padding:10px; background:#f1f2f6; border-radius:10px; border:none;">
+            <option value="now">Đón ngay lập tức</option>
+            <option value="scheduled">Hẹn giờ đón</option>
+        </select>
+    </div>
+    
+    <div id="st-wrapper" class="input-group" style="display:none; margin-top:10px;">
+        ⏰ <input type="datetime-local" id="scheduled-time">
+    </div>
+
+    <button class="btn-order" onclick="processOrder()">XÁC NHẬN ĐẶT XE</button>
+</div>
+
+<script>
+    // Firebase Config
+    const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let preferredGender = 'any';
+
+    function setGender(val, btn) {
+        preferredGender = val;
+        document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    async function processOrder() {
+        const phone = localStorage.getItem('logged_phone') || "Khách Quét QR";
+        const pickup = document.getElementById('pickup').value;
+        const dest = document.getElementById('destination').value;
+        const timeType = document.getElementById('time-type').value;
+
+        const orderData = {
+            customer_phone: phone,
+            pickup_location: pickup,
+            destination: dest,
+            driver_gender_pref: preferredGender, // Lưu sở thích giới tính
+            status: (timeType === 'now') ? "searching" : "scheduled",
+            scheduled_at: (timeType === 'scheduled') ? document.getElementById('scheduled-time').value : null,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+            await db.collection("bookings").add(orderData);
+            alert("Đã gửi yêu cầu! Hệ thống sẽ ưu tiên tìm tài xế " + (preferredGender === 'any' ? 'gần nhất' : (preferredGender === 'male' ? 'Nam' : 'Nữ')));
+        } catch (e) { alert("Lỗi: " + e.message); }
+    }
+</script>
+</body>
+</html>
