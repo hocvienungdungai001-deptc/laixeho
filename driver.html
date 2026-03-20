@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài Xế V1.80 - Lái Xe Hộ</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root { --primary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; }
+        body { font-family: -apple-system, sans-serif; background: #f4f7f6; margin: 0; padding: 15px; }
+        .card { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .debt-val { font-size: 24px; color: var(--danger); font-weight: bold; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .btn-on { background: var(--primary); color: white; }
+        .btn-off { background: var(--danger); color: white; }
+        .hidden { display: none; }
+        select, input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+    <div id="reg-form" class="card hidden">
+        <h3>Hoàn thiện hồ sơ tài xế</h3>
+        <select id="driver-gender">
+            <option value="">Chọn giới tính của bạn</option>
+            <option value="male">Nam</option>
+            <option value="female">Nữ</option>
+        </select>
+        <button class="btn-on" onclick="saveProfile()">LƯU THÔNG TIN</button>
+    </div>
+
+    <div id="main-ui">
+        <div class="card" style="text-align:center; background: var(--dark); color: white;">
+            <p id="welcome-text">Xin chào tài xế!</p>
+            <h2 id="status-label">OFFLINE</h2>
+            <button id="toggle-btn" class="btn-on" onclick="toggleStatus()">BẬT NHẬN ĐƠN</button>
+        </div>
+
+        <div class="card">
+            <p style="margin:0; color: #666;">Công nợ (Tiền nợ hệ thống):</p>
+            <div class="debt-val" id="debt-display">0đ</div>
+            <p style="font-size: 12px; color: #999;">Hạn mức tối đa: <span id="limit-display">500,000</span>đ</p>
+            <button style="background: #3498db; color:white;" onclick="openDeposit()">NỘP TIỀN QUA VIETQR</button>
+            
+            <div id="qr-area" class="hidden" style="text-align:center; margin-top:15px;">
+                <img id="qr-img" src="" width="200">
+                <p style="font-size: 11px;">Chuyển đúng số tiền và nội dung để hệ thống tự gạch nợ.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", authDomain: "tavietnam-78ae8.firebaseapp.com", projectId: "tavietnam-78ae8", storageBucket: "tavietnam-78ae8.firebasestorage.app", messagingSenderId: "670121705534", appId: "1:670121705534:web:1027ad98550573ad37116f" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const phone = localStorage.getItem('logged_phone');
+        if(!phone) window.location.href = "login.html";
+
+        let isOnline = false;
+
+        // Khởi tạo dữ liệu tài xế & Lắng nghe thay đổi
+        db.collection("drivers").doc(phone).onSnapshot(doc => {
+            if(!doc.exists) {
+                document.getElementById('reg-form').classList.remove('hidden');
+                document.getElementById('main-ui').classList.add('hidden');
+            } else {
+                const data = doc.data();
+                document.getElementById('welcome-text').innerText = `Chào ${phone} (${data.gender === 'male' ? 'Nam' : 'Nữ'})`;
+                document.getElementById('debt-display').innerText = data.balance_owed.toLocaleString() + "đ";
+                document.getElementById('limit-display').innerText = data.limit.toLocaleString();
+                
+                if(data.balance_owed >= data.limit) {
+                    document.getElementById('toggle-btn').disabled = true;
+                    document.getElementById('toggle-btn').innerText = "TÀI KHOẢN BỊ KHÓA NỢ";
+                    document.getElementById('toggle-btn').style.background = "#ccc";
+                }
+            }
+        });
+
+        async function saveProfile() {
+            const gender = document.getElementById('driver-gender').value;
+            if(!gender) return alert("Vui lòng chọn giới tính!");
+            await db.collection("drivers").doc(phone).set({
+                gender: gender,
+                balance_owed: 0,
+                limit: 500000,
+                status: "offline",
+                last_active: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            location.reload();
+        }
+
+        function toggleStatus() {
+            isOnline = !isOnline;
+            const btn = document.getElementById('toggle-btn');
+            const label = document.getElementById('status-label');
+            
+            if(isOnline) {
+                btn.innerText = "TẠM NGHỈ (OFFLINE)";
+                btn.className = "btn-off";
+                label.innerText = "ĐANG SẴN SÀNG ĐÓN KHÁCH";
+                db.collection("drivers").doc(phone).update({ status: "available" });
+            } else {
+                btn.innerText = "BẬT CHẾ ĐỘ NHẬN ĐƠN";
+                btn.className = "btn-on";
+                label.innerText = "OFFLINE";
+                db.collection("drivers").doc(phone).update({ status: "offline" });
+            }
+        }
+
+        function openDeposit() {
+            const amount = prompt("Số tiền muốn nạp:");
+            if(amount) {
+                const content = "NAP " + phone;
+                document.getElementById('qr-img').src = `https://img.vietqr.io/image/MB-0901234567-compact2.png?amount=${amount}&addInfo=${content}`;
+                document.getElementById('qr-area').classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
