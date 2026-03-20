@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác thực đa nền tảng - V1.60</title>
+    <style>
+        :root { --zalo: #0068ff; --tele: #0088cc; --mess: #0084ff; --sms: #34495e; }
+        body { font-family: -apple-system, sans-serif; background: #f4f7f6; display: flex; justify-content: center; padding: 20px; }
+        .auth-card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 380px; text-align: center; }
+        input { width: 100%; padding: 15px; margin: 15px 0; border: 1px solid #ddd; border-radius: 12px; font-size: 16px; box-sizing: border-box; }
+        
+        .btn-auth { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: bold; color: white; margin-bottom: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
+        .btn-auth:active { transform: scale(0.98); }
+        
+        .bg-zalo { background: var(--zalo); }
+        .bg-tele { background: var(--tele); }
+        .bg-mess { background: var(--mess); }
+        .bg-sms { background: var(--sms); }
+        
+        .footer-text { font-size: 12px; color: #999; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="auth-card">
+    <h2 style="margin-bottom: 5px;">XÁC THỰC</h2>
+    <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Chọn cách nhận mã OTP để đặt xe</p>
+    
+    <input type="tel" id="phone" placeholder="Nhập số điện thoại của bạn..." maxlength="10">
+
+    <button class="btn-auth bg-zalo" onclick="sendOTP('zalo')">📱 Nhận qua ZALO</button>
+    <button class="btn-auth bg-tele" onclick="sendOTP('tele')">✈️ Nhận qua TELEGRAM</button>
+    <button class="btn-auth bg-mess" onclick="sendOTP('mess')">💬 Nhận qua MESSENGER</button>
+    <button class="btn-auth bg-sms" onclick="sendOTP('sms')">✉️ Nhận qua SMS</button>
+
+    <p class="footer-text">Hệ thống sẽ tự động ghi nhớ đăng nhập cho lần sau.</p>
+</div>
+
+<script>
+    function sendOTP(platform) {
+        const phone = document.getElementById('phone').value;
+        if(phone.length < 10) { alert("Vui lòng nhập SĐT hợp lệ"); return; }
+
+        // Logic xử lý theo từng nền tảng
+        switch(platform) {
+            case 'zalo':
+                alert("Đang gửi OTP qua Zalo Bot...");
+                break;
+            case 'tele':
+                // Gọi Telegram Bot API: https://api.telegram.org/bot<token>/sendMessage
+                alert("Vui lòng kiểm tra Telegram của bạn!");
+                break;
+            case 'mess':
+                // Gọi Facebook Send API
+                alert("Mã OTP đã gửi vào Messenger!");
+                break;
+            case 'sms':
+                alert("Đang gửi tin nhắn SMS truyền thống...");
+                break;
+        }
+        
+        // Sau khi gửi, hiện ô nhập mã (tương tự các version trước)
+        const code = prompt("Nhập mã OTP 6 số bạn vừa nhận được:");
+        if(code && code.length === 6) {
+            localStorage.setItem('logged_phone', phone);
+            alert("Xác thực thành công!");
+            window.location.href = "index.html";
+        }
+    }
+</script>
+</body>
+</html>
